@@ -260,7 +260,15 @@
             <div class="result-title">Analysis Complete</div>
             <div class="result-file">File: <strong id="resultFileName"></strong></div>
             <div class="result-status" id="resultStatus"></div>
-            <div class="attributes" id="attributes"></div>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0,0,0,0.1);">
+                <div style="margin-bottom: 10px;">
+                    <strong>Confidence:</strong> <span id="resultConfidence"></span>%
+                </div>
+                <div id="attributes"></div>
+                <div style="margin-top: 10px;">
+                    <strong>Reasoning:</strong> <em id="resultReasoning"></em>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -358,13 +366,23 @@
             
             resultStatus.textContent = data.status;
             
-            if (data.matched_attributes && data.matched_attributes.length > 0) {
-                attributes.innerHTML = '<div style="margin-top: 10px;"><strong>Matched Requirements:</strong><ul class="attributes-list">' +
-                    data.matched_attributes.map(attr => `<li>${attr}</li>`).join('') +
+            // Display confidence level
+            const confidenceElement = document.getElementById('resultConfidence');
+            const confidence = Math.round((data.confidence || 0) * 100);
+            confidenceElement.textContent = confidence;
+            
+            // Display matched phrases
+            if (data.matched_phrases && data.matched_phrases.length > 0) {
+                attributes.innerHTML = '<div style="margin-bottom: 10px;"><strong>Matched Phrases:</strong><ul class="attributes-list">' +
+                    data.matched_phrases.map(phrase => `<li>${phrase}</li>`).join('') +
                     '</ul></div>';
             } else {
-                attributes.innerHTML = '<div style="margin-top: 10px; font-style: italic;">No requirements matched.</div>';
+                attributes.innerHTML = '<div style="margin-bottom: 10px; font-style: italic;">No specific phrases matched.</div>';
             }
+            
+            // Display reasoning
+            const reasoningElement = document.getElementById('resultReasoning');
+            reasoningElement.textContent = data.reasoning || 'Analysis completed.';
         }
 
         function showError(message) {
