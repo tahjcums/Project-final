@@ -1,11 +1,9 @@
 import os
 import re
 from PyPDF2 import PdfReader
+import requests
 
-def scan_pdf(file_path, log_file):
-    # Define the strings to search for (case-insensitive)
-    search_strings = ["Female Only", "STEM Major Only", "Service Member Only", "International only"]
-
+def scan_pdf_with_ollama(file_path, log_file, ollama_url, ollama_prompt):
     # Check if the file exists
     if not os.path.exists(file_path):
         print(f"Error: File '{file_path}' does not exist.")
@@ -21,17 +19,25 @@ def scan_pdf(file_path, log_file):
         print(f"Error reading PDF: {e}")
         return
 
-    # Search for strings in the PDF text
-    matched_attributes = []
-    for string in search_strings:
-        if re.search(string, pdf_text, re.IGNORECASE):
-            matched_attributes.append(string)
+    # Send the extracted text to the Ollama model
+    try:
+        response = requests.post(
+            ollama_url,
+            json={"prompt": ollama_prompt, "content": pdf_text}
+        )
+        response.raise_for_status()
+        result = response.json()
+        is_applicable = result.get("is_applicable", False)
+        matched_attributes = result.get("matched_attributes", [])
+    except Exception as e:
+        print(f"Error communicating with Ollama model: {e}")
+        return
 
     # Determine the log entry
-    if matched_attributes:
+    if is_applicable and matched_attributes:
         log_entry = f"{file_path}: {', '.join(matched_attributes)}\n"
     else:
-        log_entry = f"{file_path}: Applicable\n"
+        log_entry = f"{file_path}: Not applicable\n"
 
     # Write the log entry to the log file
     try:
@@ -45,4 +51,12 @@ if __name__ == "__main__":
     # Example usage
     pdf_path = input("Enter the path to the PDF file: ").strip()
     log_path = "scan_log.txt"  # Log file name
-    scan_pdf(pdf_path, log_path)
+    ollama_url = "http://localhost:8000/analyze"  # Replace with your Ollama model endpoint
+    ollama_prompt = (
+        "Determine if the following PDF content meets any of these requirements: \n"
+        "- Female Only\n"
+        "- STEM Major Only\n"
+        "- Service Member Only\n"
+        "Return 'is_applicable' as true or false and list matched attributes."
+    )
+    scan_pdf_with_ollama(pdf_path, log_path, ollama_url, ollama_prompt)
